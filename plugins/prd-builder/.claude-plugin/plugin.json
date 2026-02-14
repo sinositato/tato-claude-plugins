@@ -1,0 +1,17 @@
+{
+  "name": "prd-builder",
+  "description": "Complete PRD generation and refinement system with 13 specialized skills",
+  "version": "1.0.0",
+  "author": {
+    "name": "tato"
+  },
+  "license": "MIT",
+  "keywords": ["prd", "product-management", "documentation", "requirements", "templates"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tato/tato-claude-plugins"
+  },
+  "skills": {
+    "auto-discover": true
+  }
+}

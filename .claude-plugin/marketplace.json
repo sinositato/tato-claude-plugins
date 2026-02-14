@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "tato-plugins",
+  "description": "Productivity plugins for Claude Code including PRD Builder",
+  "owner": {
+    "name": "tato"
+  },
+  "plugins": [
+    {
+      "name": "prd-builder",
+      "displayName": "PRD Builder",
+      "description": "Complete PRD generation and refinement system with 13 specialized skills for product requirements documentation",
+      "version": "1.0.0",
+      "author": {
+        "name": "tato"
+      },
+      "source": "./plugins/prd-builder",
+      "category": "productivity",
+      "tags": ["prd", "product-management", "documentation", "requirements", "planning", "templates"],
+      "license": "MIT"
+    }
+  ]
+}
