@@ -46,16 +46,35 @@ Create an internal summary of:
 
 Use AskUserQuestion to gather UI-specific requirements.
 
-**Question 1: Component Selection**
-- Header: "Components"
+**Question 1: Component Scope**
+- Header: "Scope"
 - Question: "Which components do you want to prototype?"
+- Multi-select: false
+- Options:
+  - "All major components identified in PRD (Recommended)" (description: "Generate prototypes for all key UI components mentioned in the PRD")
+  - "Let me select specific components" (description: "Choose which components to prototype from a list")
+  - "Custom component list" (description: "I'll provide a custom list of components")
+
+**Question 1b: Select Specific Components (Conditional)**
+Only asked if user selects "Let me select specific components" in Question 1.
+
+- Header: "Components"
+- Question: "Which components should be prototyped? (select all that apply)"
 - Multi-select: true
 - Options:
   - Dynamically extract from PRD (look for: login form, dashboard, settings panel, navigation bar, user profile, etc.)
-  - Always include option: "All major components identified in PRD"
-  - Always include option: "Let me specify custom components"
+  - **IMPORTANT**: Maximum 4 options per question
+  - If PRD has ≤4 components: Present all in a single multi-select question
+  - If PRD has 5-8 components: Split into two questions:
+    - Question 1b: "Primary Components" (first 4 components)
+    - Question 1c: "Additional Components" (remaining components)
+  - If PRD has >8 components: Prioritize top 4 by:
+    - Frequency in user stories
+    - P0 functional requirements
+    - Core user flows
+    - Then ask if user wants to see more components
 
-If user selects "Let me specify custom components", ask a follow-up text question for the component list.
+If user selects "Custom component list" in Question 1, ask a follow-up text question for the component list.
 
 **Question 2: Fidelity Level**
 - Header: "Fidelity"
@@ -68,7 +87,7 @@ If user selects "Let me specify custom components", ask a follow-up text questio
 
 **{PREVIOUS_CHOICE_SUFFIX}**: If previous fidelity was detected from design-spec.md, append to question: "(Previous: {fidelity})"
 
-**Question 3: Aesthetic Direction**
+**Question 3: Aesthetic Direction (Primary Options)**
 - Header: "Aesthetic"
 - Question: "What aesthetic direction should the prototypes follow? {PREVIOUS_CHOICE_SUFFIX}"
 - Multi-select: false
@@ -76,10 +95,22 @@ If user selects "Let me specify custom components", ask a follow-up text questio
   - "Let designer decide based on PRD context (Recommended)" (description: "frontend-design skill will choose an appropriate aesthetic")
   - "Minimal & refined" (description: "Clean, spacious, elegant, restrained color palette")
   - "Bold & maximalist" (description: "Vibrant colors, strong typography, rich visuals")
-  - "Professional/corporate" (description: "Trust-building, conventional, accessible")
-  - "Retro-futuristic" (description: "Nostalgic tech aesthetics with modern execution")
+  - "Show more aesthetic options..." (description: "View additional aesthetic directions")
 
 **{PREVIOUS_CHOICE_SUFFIX}**: If previous aesthetic was detected from design-spec.md, append to question: "(Previous: {aesthetic})"
+
+**Question 3b: Extended Aesthetic Options (Conditional)**
+Only asked if user selects "Show more aesthetic options..." in Question 3.
+
+- Header: "Aesthetic"
+- Question: "Choose an aesthetic direction:"
+- Multi-select: false
+- Options:
+  - "Professional/corporate" (description: "Trust-building, conventional, accessible")
+  - "Retro-futuristic" (description: "Nostalgic tech aesthetics with modern execution")
+  - "Go back to main options" (description: "Return to the primary aesthetic choices")
+
+If user selects "Go back to main options", re-present Question 3.
 
 **Question 4: Interactivity**
 - Header: "Interactivity"
@@ -148,11 +179,24 @@ Before creating new prototypes, check if prototypes already exist:
    - **Interactivity level** — Look for "**Interactivity:**" under "## Design Direction"
 
 3. **Parse the values**:
-   - Aesthetic examples: "bold-futuristic", "minimal-refined", "professional-corporate", "retro-futuristic", "let-designer-decide"
+   - Aesthetic examples:
+     - From Question 3 (Primary): "let-designer-decide", "minimal-refined", "bold-maximalist"
+     - From Question 3b (Extended): "professional-corporate", "retro-futuristic"
    - Fidelity examples: "low", "medium", "high"
    - Interactivity examples: "static", "basic-interactions", "full-interactivity"
+   - Components (if stored): Array of component names (e.g., ["login-form", "dashboard", "user-profile"])
 
 4. **Store parsed values** to pre-fill the questions in Step 3 (Interactive Discovery)
+
+5. **Pre-fill logic for multi-question flow**:
+   - If previous aesthetic is from extended set ("professional-corporate", "retro-futuristic"):
+     - In Question 3: Auto-select "Show more aesthetic options..."
+     - Automatically navigate to Question 3b with the previous choice selected
+     - Display in Question 3b suffix: "(Previous: {aesthetic})"
+   - If previous aesthetic is from primary set ("let-designer-decide", "minimal-refined", "bold-maximalist"):
+     - Pre-select in Question 3 directly
+     - Display in Question 3 suffix: "(Previous: {aesthetic})"
+   - If no previous aesthetic found: Use default suffix without "(Previous: ...)"
 
 **Important**: If design-spec.md doesn't exist or is malformed, gracefully skip this step and proceed with fresh questions.
 
@@ -247,6 +291,14 @@ Content structure:
 **Aesthetic:** <chosen aesthetic>
 **Fidelity:** <chosen fidelity level>
 **Interactivity:** <chosen interactivity level>
+**Components:** <list of component names>
+
+**IMPORTANT**: Store the actual aesthetic selected by the user, not meta-options:
+- Valid aesthetic values: "let-designer-decide", "minimal-refined", "bold-maximalist", "professional-corporate", "retro-futuristic"
+- Do NOT store: "show-more-aesthetic-options" or "go-back-to-main-options"
+- Valid fidelity values: "low", "medium", "high"
+- Valid interactivity values: "static", "basic-interactions", "full-interactivity"
+- Components should be stored as a comma-separated list (e.g., "login-form, dashboard, user-profile")
 
 ## Rationale
 
