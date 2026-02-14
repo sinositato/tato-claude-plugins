@@ -8,7 +8,6 @@
   "plugins": [
     {
       "name": "prd-builder",
-      "displayName": "PRD Builder",
       "description": "Complete PRD generation and refinement system with 13 specialized skills for product requirements documentation",
       "version": "1.0.0",
       "author": {
