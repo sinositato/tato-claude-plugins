@@ -7,11 +7,5 @@
   },
   "license": "MIT",
   "keywords": ["prd", "product-management", "documentation", "requirements", "templates"],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/tato/tato-claude-plugins"
-  },
-  "skills": {
-    "auto-discover": true
-  }
+  "repository": "https://github.com/sinositato/tato-claude-plugins"
 }
