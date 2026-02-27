@@ -1,0 +1,10 @@
+{
+  "name": "portainer-tools",
+  "description": "Manage Docker containers across homelab hosts via the Portainer API — status, control, logs, and stack deployment",
+  "version": "1.0.0",
+  "author": {
+    "name": "tato"
+  },
+  "license": "MIT",
+  "keywords": ["portainer", "docker", "homelab", "containers", "devops"]
+}

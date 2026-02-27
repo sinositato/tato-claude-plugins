@@ -1,0 +1,36 @@
+---
+name: portainer-logs
+description: View container logs from a Portainer-managed Docker host. Use when asked to "view logs", "show logs", "tail logs", "check logs", or "read console output" for a specific container.
+argument-hint: "<container-name> [on <host>] [--tail <n>]"
+user-invocable: true
+allowed-tools: [Bash]
+---
+
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+Fetch and display logs for a named container on a Docker host via the Portainer API.
+
+## Steps
+
+1. Parse `$ARGUMENTS`:
+   - Extract container name
+   - Extract host if specified after `on` (e.g. `on docker01`)
+   - Extract `--tail <n>` if present (default: 100)
+
+2. Run:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/portainer.py logs <container> [--host <host>] [--tail <n>]
+```
+
+   Example: `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/portainer.py logs n8n --host docker02 --tail 200`
+
+3. Display the output in a code block.
+
+4. If the script reports multiple matches, ask the user to specify the host.
+
+5. If `PORTAINER_PASS` is not set, tell the user to `export PORTAINER_PASS=yourpassword` before invoking.

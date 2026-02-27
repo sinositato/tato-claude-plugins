@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "tato-plugins",
-  "description": "Productivity plugins for Claude Code including PRD Builder",
+  "description": "Productivity plugins for Claude Code",
   "owner": {
     "name": "tato"
   },
@@ -16,6 +16,18 @@
       "source": "./plugins/prd-builder",
       "category": "productivity",
       "tags": ["prd", "product-management", "documentation", "requirements", "planning", "templates"],
+      "license": "MIT"
+    },
+    {
+      "name": "portainer-tools",
+      "description": "Manage Docker containers across Portainer-managed hosts — status, control, logs, and stack deployment",
+      "version": "1.0.0",
+      "author": {
+        "name": "tato"
+      },
+      "source": "./plugins/portainer-tools",
+      "category": "devops",
+      "tags": ["portainer", "docker", "homelab", "containers", "devops"],
       "license": "MIT"
     }
   ]
