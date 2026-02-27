@@ -85,6 +85,30 @@ def strip_docker_headers(raw):
     return "".join(output)
 
 
+def format_ports(ports):
+    """Format Docker API port entries into readable strings like '3100→3000'."""
+    entries = []
+    for p in ports:
+        pub = p.get("PublicPort")
+        priv = p.get("PrivatePort")
+        ptype = p.get("Type", "tcp")
+        if pub:
+            suffix = "" if ptype == "tcp" else f"/{ptype}"
+            if pub == priv:
+                entries.append(f"{pub}{suffix}")
+            else:
+                entries.append(f"{pub}→{priv}{suffix}")
+    # Deduplicate and sort by public port
+    seen = set()
+    unique = []
+    for e in entries:
+        if e not in seen:
+            seen.add(e)
+            unique.append(e)
+    unique.sort(key=lambda x: int(x.split("→")[0].split("/")[0]))
+    return ", ".join(unique) if unique else "—"
+
+
 # --- Subcommands ---
 
 
@@ -114,7 +138,8 @@ def cmd_status(args, session, url, endpoints):
                 name = c["Names"][0].lstrip("/")
                 state = c["State"]
                 status = c["Status"]
-                rows.append((name, state, status))
+                port_str = format_ports(c.get("Ports", []))
+                rows.append((name, state, status, port_str))
                 if state == "running":
                     total_running += 1
                 elif state in ("exited", "created"):
@@ -124,11 +149,68 @@ def cmd_status(args, session, url, endpoints):
 
             max_name = max(len(r[0]) for r in rows)
             max_state = max(len(r[1]) for r in rows)
-            for name, state, status in rows:
-                print(f"  {name:<{max_name}}  {state:<{max_state}}  {status}")
+            if args.ports:
+                max_status = max(len(r[2]) for r in rows)
+                for name, state, status, port_str in rows:
+                    print(f"  {name:<{max_name}}  {state:<{max_state}}  {status:<{max_status}}  {port_str}")
+            else:
+                for name, state, status, _ in rows:
+                    print(f"  {name:<{max_name}}  {state:<{max_state}}  {status}")
         print()
 
     print(f"Summary: {total_running} running, {total_stopped} stopped, {total_other} other")
+    return 0
+
+
+def cmd_ports(args, session, url, endpoints):
+    if args.host == "all":
+        targets = endpoints
+    else:
+        targets = {args.host: endpoints[args.host]}
+
+    for host, eid in targets.items():
+        resp = session.get(f"{url}/api/endpoints/{eid}/docker/containers/json?all=1")
+        if resp.status_code != 200:
+            print(f"=== {host} === (error: HTTP {resp.status_code})")
+            continue
+
+        containers = resp.json()
+        print(f"=== {host} ===")
+
+        # Collect all port mappings, deduplicated
+        port_rows = []
+        seen = set()
+        for c in containers:
+            name = c["Names"][0].lstrip("/")
+            state = c["State"]
+            net_mode = c.get("HostConfig", {}).get("NetworkMode", "")
+            for p in c.get("Ports", []):
+                pub = p.get("PublicPort")
+                priv = p.get("PrivatePort")
+                ptype = p.get("Type", "tcp")
+                key = (pub, priv, ptype, name)
+                if pub and key not in seen:
+                    seen.add(key)
+                    port_rows.append((pub, priv, ptype, name, state))
+            if net_mode == "host":
+                key = (None, None, "host", name)
+                if key not in seen:
+                    seen.add(key)
+                    port_rows.append((None, None, "host", name, state))
+
+        if not port_rows:
+            print("  (no published ports)")
+        else:
+            # Sort by host port (host-mode entries go last)
+            port_rows.sort(key=lambda r: (r[0] or 99999,))
+            max_name = max(len(r[3]) for r in port_rows)
+            for pub, priv, ptype, name, state in port_rows:
+                if pub is None:
+                    print(f"  {'host':<7}  {'—':>5}  {'—':<4}  {name:<{max_name}}  {state}")
+                else:
+                    print(f"  {pub:<7}  {priv:>5}  {ptype:<4}  {name:<{max_name}}  {state}")
+        print()
+
     return 0
 
 
@@ -278,6 +360,10 @@ def main():
 
     p_status = sub.add_parser("status", help="Show container status")
     p_status.add_argument("host", nargs="?", default="all", choices=["all"] + host_choices)
+    p_status.add_argument("--ports", action="store_true", help="Include port mappings in output")
+
+    p_ports = sub.add_parser("ports", help="Show port allocations per host")
+    p_ports.add_argument("host", nargs="?", default="all", choices=["all"] + host_choices)
 
     p_control = sub.add_parser("control", help="Start/stop/restart a container")
     p_control.add_argument("action", choices=["start", "stop", "restart"])
@@ -300,7 +386,7 @@ def main():
     session = requests.Session()
     session.headers["Authorization"] = f"Bearer {token}"
 
-    handlers = {"status": cmd_status, "control": cmd_control, "logs": cmd_logs, "deploy": cmd_deploy}
+    handlers = {"status": cmd_status, "ports": cmd_ports, "control": cmd_control, "logs": cmd_logs, "deploy": cmd_deploy}
 
     try:
         code = handlers[args.command](args, session, url, endpoints)
