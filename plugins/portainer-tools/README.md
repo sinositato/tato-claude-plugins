@@ -1,6 +1,6 @@
 # Portainer Tools
 
-Manage Docker containers across Portainer-managed hosts from Claude Code — check status, view logs, control containers, and deploy stacks.
+Manage Docker containers and networks across Portainer-managed hosts from Claude Code — check status, view logs, control containers, deploy stacks, and manage networks.
 
 ## Skills
 
@@ -10,6 +10,7 @@ Manage Docker containers across Portainer-managed hosts from Claude Code — che
 | Control | `/portainer-control restart grafana` | Start, stop, or restart a container |
 | Logs | `/portainer-logs n8n --tail 50` | View container stdout/stderr logs |
 | Deploy | `/portainer-deploy docker01/grafana` | Deploy or update a Portainer stack |
+| Networks | `/portainer-networks list` | List, inspect, create, or remove Docker networks |
 
 ## Setup
 
@@ -66,4 +67,16 @@ export PORTAINER_ENDPOINTS='{"myhost1": 1, "myhost2": 2}'
 
 # Deploy a stack from a compose file
 /portainer-deploy docker01/prometheus
+
+# List all Docker networks
+/portainer-networks list
+
+# Inspect a specific network
+/portainer-networks inspect pgnet --host docker02
+
+# Create a network
+/portainer-networks create my-net --host docker01
+
+# Remove a network
+/portainer-networks remove my-net --host docker01
 ```
