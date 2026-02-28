@@ -1,6 +1,6 @@
 {
   "name": "portainer-tools",
-  "description": "Manage Docker containers across homelab hosts via the Portainer API — status, control, logs, port mapping, networks, and stack deployment",
+  "description": "Manage Docker containers across homelab hosts via the Portainer API — status, control, logs, port mapping, networks, volumes, and stack deployment",
   "version": "1.0.0",
   "author": {
     "name": "tato"

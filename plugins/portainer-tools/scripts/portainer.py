@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
-"""CLI for managing Docker containers via the Portainer API.
+"""CLI for managing homelab containers via the Portainer API.
 
 Requires: requests (pip install requests)
-
-Environment variables:
-  PORTAINER_TOKEN     (required) — API access token (generate in Portainer: User Settings > Access Tokens)
-  PORTAINER_URL       (optional) — default: http://192.168.10.12:9000
-  PORTAINER_ENDPOINTS (optional) — JSON map of host:id, default: docker01=7,docker02=8,soho-nas=9
-  COMPOSE_ROOT        (optional) — root directory for compose files, default: current working directory
+Environment: PORTAINER_TOKEN (API access token) is required. PORTAINER_URL defaults to http://192.168.10.12:9000.
 """
 
 import argparse
-import json
 import os
 import sys
 from pathlib import Path
@@ -19,18 +13,8 @@ from pathlib import Path
 import requests
 
 DEFAULT_URL = "http://192.168.10.12:9000"
-DEFAULT_ENDPOINTS = {"docker01": 7, "docker02": 8, "soho-nas": 9}
-
-
-def get_endpoints():
-    raw = os.environ.get("PORTAINER_ENDPOINTS")
-    if raw:
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
-            print(f"Error: PORTAINER_ENDPOINTS is not valid JSON: {raw}", file=sys.stderr)
-            sys.exit(1)
-    return DEFAULT_ENDPOINTS
+ENDPOINTS = {"docker01": 7, "docker02": 8, "soho-nas": 9}
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def get_env():
@@ -42,13 +26,12 @@ def get_env():
         print("Run: export PORTAINER_TOKEN=ptr_...", file=sys.stderr)
         sys.exit(1)
     return url, token
-    return token
 
 
-def find_container(session, url, name, endpoint_ids, endpoints):
+def find_container(session, url, name, endpoint_ids):
     """Search endpoints for containers matching `name`. Returns [(endpoint_id, exact_name, host_name)]."""
     matches = []
-    host_by_id = {v: k for k, v in endpoints.items()}
+    host_by_id = {v: k for k, v in ENDPOINTS.items()}
     for eid in endpoint_ids:
         resp = session.get(f"{url}/api/endpoints/{eid}/docker/containers/json?all=1")
         if resp.status_code != 200:
@@ -67,6 +50,7 @@ def strip_docker_headers(raw):
     while i + 8 <= len(raw):
         size = int.from_bytes(raw[i + 4 : i + 8], "big")
         if i + 8 + size > len(raw):
+            # Incomplete frame — grab what's left
             output.append(raw[i + 8 :].decode("utf-8", errors="replace"))
             break
         output.append(raw[i + 8 : i + 8 + size].decode("utf-8", errors="replace"))
@@ -101,11 +85,11 @@ def format_ports(ports):
 # --- Subcommands ---
 
 
-def cmd_status(args, session, url, endpoints):
+def cmd_status(args, session, url):
     if args.host == "all":
-        targets = endpoints
+        targets = ENDPOINTS
     else:
-        targets = {args.host: endpoints[args.host]}
+        targets = {args.host: ENDPOINTS[args.host]}
 
     total_running = 0
     total_stopped = 0
@@ -136,6 +120,7 @@ def cmd_status(args, session, url, endpoints):
                 else:
                     total_other += 1
 
+            # Align columns
             max_name = max(len(r[0]) for r in rows)
             max_state = max(len(r[1]) for r in rows)
             if args.ports:
@@ -151,11 +136,11 @@ def cmd_status(args, session, url, endpoints):
     return 0
 
 
-def cmd_ports(args, session, url, endpoints):
+def cmd_ports(args, session, url):
     if args.host == "all":
-        targets = endpoints
+        targets = ENDPOINTS
     else:
-        targets = {args.host: endpoints[args.host]}
+        targets = {args.host: ENDPOINTS[args.host]}
 
     for host, eid in targets.items():
         resp = session.get(f"{url}/api/endpoints/{eid}/docker/containers/json?all=1")
@@ -203,13 +188,13 @@ def cmd_ports(args, session, url, endpoints):
     return 0
 
 
-def cmd_control(args, session, url, endpoints):
+def cmd_control(args, session, url):
     if args.host:
-        endpoint_ids = [endpoints[args.host]]
+        endpoint_ids = [ENDPOINTS[args.host]]
     else:
-        endpoint_ids = list(endpoints.values())
+        endpoint_ids = list(ENDPOINTS.values())
 
-    matches = find_container(session, url, args.container, endpoint_ids, endpoints)
+    matches = find_container(session, url, args.container, endpoint_ids)
 
     if not matches:
         print(f"Error: Container '{args.container}' not found.", file=sys.stderr)
@@ -242,13 +227,13 @@ def cmd_control(args, session, url, endpoints):
         return 1
 
 
-def cmd_logs(args, session, url, endpoints):
+def cmd_logs(args, session, url):
     if args.host:
-        endpoint_ids = [endpoints[args.host]]
+        endpoint_ids = [ENDPOINTS[args.host]]
     else:
-        endpoint_ids = list(endpoints.values())
+        endpoint_ids = list(ENDPOINTS.values())
 
-    matches = find_container(session, url, args.container, endpoint_ids, endpoints)
+    matches = find_container(session, url, args.container, endpoint_ids)
 
     if not matches:
         print(f"Error: Container '{args.container}' not found.", file=sys.stderr)
@@ -284,27 +269,27 @@ def cmd_logs(args, session, url, endpoints):
     return 0
 
 
-def cmd_deploy(args, session, url, endpoints):
+def cmd_deploy(args, session, url):
     parts = args.target.split("/", 1)
     if len(parts) != 2:
         print("Error: Target must be <host>/<service> (e.g. docker01/grafana)", file=sys.stderr)
         return 1
 
     host, service = parts
-    if host not in endpoints:
-        print(f"Error: Unknown host '{host}'. Use: {', '.join(endpoints.keys())}", file=sys.stderr)
+    if host not in ENDPOINTS:
+        print(f"Error: Unknown host '{host}'. Use: {', '.join(ENDPOINTS.keys())}", file=sys.stderr)
         return 1
 
-    compose_root = Path(os.environ.get("COMPOSE_ROOT", "."))
-    compose_path = compose_root / "docker" / host / service / f"{service}.yml"
+    compose_path = REPO_ROOT / "docker" / host / service / f"{service}.yml"
     if not compose_path.exists():
         print(f"Error: Compose file not found at {compose_path}", file=sys.stderr)
         return 1
 
     stack_name = args.stack_name or service
-    endpoint_id = endpoints[host]
+    endpoint_id = ENDPOINTS[host]
     compose_content = compose_path.read_text()
 
+    # Check if stack already exists
     resp = session.get(f"{url}/api/stacks")
     if resp.status_code != 200:
         print(f"Error: Failed to list stacks (HTTP {resp.status_code})", file=sys.stderr)
@@ -317,12 +302,14 @@ def cmd_deploy(args, session, url, endpoints):
             break
 
     if existing_id is None:
+        # Create new stack
         resp = session.post(
             f"{url}/api/stacks/create/standalone/string",
             params={"endpointId": endpoint_id},
             json={"name": stack_name, "stackFileContent": compose_content},
         )
     else:
+        # Update existing stack
         resp = session.put(
             f"{url}/api/stacks/{existing_id}",
             params={"endpointId": endpoint_id},
@@ -343,10 +330,195 @@ def cmd_deploy(args, session, url, endpoints):
 DEFAULT_NETWORKS = {"bridge", "host", "none"}
 
 
-def find_network(session, url, name, endpoint_ids, endpoints):
+def find_volume(session, url, name, endpoint_ids):
+    """Search endpoints for volumes matching `name`. Returns [(endpoint_id, volume_name, host_name)]."""
+    matches = []
+    host_by_id = {v: k for k, v in ENDPOINTS.items()}
+    for eid in endpoint_ids:
+        resp = session.get(f"{url}/api/endpoints/{eid}/docker/volumes")
+        if resp.status_code != 200:
+            continue
+        for v in resp.json().get("Volumes", []) or []:
+            vname = v["Name"]
+            if name == vname or name in vname:
+                matches.append((eid, vname, host_by_id.get(eid, f"endpoint-{eid}")))
+    return matches
+
+
+def cmd_volumes(args, session, url):
+    action = args.action
+
+    if action == "list":
+        if args.host == "all":
+            targets = ENDPOINTS
+        else:
+            targets = {args.host: ENDPOINTS[args.host]}
+
+        total = 0
+
+        for host, eid in targets.items():
+            resp = session.get(f"{url}/api/endpoints/{eid}/docker/volumes")
+            if resp.status_code != 200:
+                print(f"=== {host} === (error: HTTP {resp.status_code})")
+                continue
+
+            volumes = resp.json().get("Volumes", []) or []
+            print(f"=== {host} ===")
+            if not volumes:
+                print("  (no volumes)")
+            else:
+                rows = []
+                for v in sorted(volumes, key=lambda x: x["Name"]):
+                    name = v["Name"]
+                    driver = v.get("Driver", "—")
+                    mountpoint = v.get("Mountpoint", "—")
+                    rows.append((name, driver, mountpoint))
+                    total += 1
+
+                max_name = max(len(r[0]) for r in rows)
+                max_driver = max(len(r[1]) for r in rows)
+                print(f"  {'NAME':<{max_name}}  {'DRIVER':<{max_driver}}  MOUNTPOINT")
+                for name, driver, mountpoint in rows:
+                    print(f"  {name:<{max_name}}  {driver:<{max_driver}}  {mountpoint}")
+            print()
+
+        print(f"Summary: {total} volumes across {len(targets)} host(s)")
+        return 0
+
+    elif action == "inspect":
+        if not args.name:
+            print("Error: Volume name is required for inspect.", file=sys.stderr)
+            return 1
+
+        if args.host and args.host != "all":
+            endpoint_ids = [ENDPOINTS[args.host]]
+        else:
+            endpoint_ids = list(ENDPOINTS.values())
+
+        matches = find_volume(session, url, args.name, endpoint_ids)
+
+        if not matches:
+            print(f"Error: Volume '{args.name}' not found.", file=sys.stderr)
+            return 1
+        if len(matches) > 1:
+            exact = [m for m in matches if m[1] == args.name]
+            if len(exact) == 1:
+                matches = exact
+            else:
+                print(f"Error: Multiple volumes match '{args.name}':", file=sys.stderr)
+                for _, vname, host in matches:
+                    print(f"  {vname} on {host}", file=sys.stderr)
+                print("Use --host to disambiguate.", file=sys.stderr)
+                return 1
+
+        eid, vname, host = matches[0]
+        resp = session.get(f"{url}/api/endpoints/{eid}/docker/volumes/{vname}")
+        if resp.status_code != 200:
+            print(f"Error: HTTP {resp.status_code}", file=sys.stderr)
+            return 1
+
+        vol = resp.json()
+        print(f"=== Volume: {vol['Name']} ({host}) ===")
+        print(f"Driver:     {vol.get('Driver', '—')}")
+        print(f"Mountpoint: {vol.get('Mountpoint', '—')}")
+        print(f"Scope:      {vol.get('Scope', '—')}")
+        print(f"Created:    {vol.get('CreatedAt', '—')}")
+
+        labels = vol.get("Labels") or {}
+        if labels:
+            print("\nLabels:")
+            for k, v in sorted(labels.items()):
+                print(f"  {k}={v}")
+
+        options = vol.get("Options") or {}
+        if options:
+            print("\nOptions:")
+            for k, v in sorted(options.items()):
+                print(f"  {k}={v}")
+
+        usage = vol.get("UsageData")
+        if usage and usage.get("Size", -1) >= 0:
+            size_mb = usage["Size"] / (1024 * 1024)
+            ref_count = usage.get("RefCount", 0)
+            print(f"\nSize:       {size_mb:.1f} MB")
+            print(f"Ref count:  {ref_count}")
+
+        return 0
+
+    elif action == "create":
+        if not args.name:
+            print("Error: Volume name is required for create.", file=sys.stderr)
+            return 1
+        if not args.host or args.host == "all":
+            print("Error: --host is required for create.", file=sys.stderr)
+            return 1
+
+        eid = ENDPOINTS[args.host]
+        body = {"Name": args.name, "Driver": args.driver or "local"}
+        if args.opt:
+            driver_opts = {}
+            for o in args.opt:
+                if "=" not in o:
+                    print(f"Error: --opt must be key=value, got '{o}'", file=sys.stderr)
+                    return 1
+                k, v = o.split("=", 1)
+                driver_opts[k] = v
+            body["DriverOpts"] = driver_opts
+
+        resp = session.post(f"{url}/api/endpoints/{eid}/docker/volumes/create", json=body)
+        if resp.status_code == 201 or (resp.status_code == 200 and resp.json().get("Name")):
+            print(f"Volume '{args.name}' created on {args.host}.")
+            return 0
+        else:
+            print(f"Error: HTTP {resp.status_code}", file=sys.stderr)
+            if resp.text:
+                print(resp.text, file=sys.stderr)
+            return 1
+
+    elif action == "remove":
+        if not args.name:
+            print("Error: Volume name is required for remove.", file=sys.stderr)
+            return 1
+        if not args.host or args.host == "all":
+            print("Error: --host is required for remove (safety: no cross-host matching for destructive ops).", file=sys.stderr)
+            return 1
+
+        eid = ENDPOINTS[args.host]
+        matches = find_volume(session, url, args.name, [eid])
+
+        if not matches:
+            print(f"Error: Volume '{args.name}' not found on {args.host}.", file=sys.stderr)
+            return 1
+        if len(matches) > 1:
+            exact = [m for m in matches if m[1] == args.name]
+            if len(exact) == 1:
+                matches = exact
+            else:
+                print(f"Error: Multiple volumes match '{args.name}' on {args.host}:", file=sys.stderr)
+                for _, vname, _ in matches:
+                    print(f"  {vname}", file=sys.stderr)
+                return 1
+
+        _, vname, host = matches[0]
+        resp = session.delete(f"{url}/api/endpoints/{eid}/docker/volumes/{vname}")
+        if resp.status_code == 204:
+            print(f"Volume '{vname}' removed from {host}.")
+            return 0
+        else:
+            print(f"Error: HTTP {resp.status_code}", file=sys.stderr)
+            if resp.text:
+                print(resp.text, file=sys.stderr)
+            return 1
+
+    else:
+        print(f"Error: Unknown volumes action '{action}'.", file=sys.stderr)
+        return 1
+
+
+def find_network(session, url, name, endpoint_ids):
     """Search endpoints for networks matching `name`. Returns [(endpoint_id, network_id, network_name, host_name)]."""
     matches = []
-    host_by_id = {v: k for k, v in endpoints.items()}
+    host_by_id = {v: k for k, v in ENDPOINTS.items()}
     for eid in endpoint_ids:
         resp = session.get(f"{url}/api/endpoints/{eid}/docker/networks")
         if resp.status_code != 200:
@@ -358,14 +530,14 @@ def find_network(session, url, name, endpoint_ids, endpoints):
     return matches
 
 
-def cmd_networks(args, session, url, endpoints):
+def cmd_networks(args, session, url):
     action = args.action
 
     if action == "list":
         if args.host == "all":
-            targets = endpoints
+            targets = ENDPOINTS
         else:
-            targets = {args.host: endpoints[args.host]}
+            targets = {args.host: ENDPOINTS[args.host]}
 
         total_default = 0
         total_user = 0
@@ -412,17 +584,18 @@ def cmd_networks(args, session, url, endpoints):
             print("Error: Network name is required for inspect.", file=sys.stderr)
             return 1
 
-        if args.host != "all":
-            endpoint_ids = [endpoints[args.host]]
+        if args.host:
+            endpoint_ids = [ENDPOINTS[args.host]]
         else:
-            endpoint_ids = list(endpoints.values())
+            endpoint_ids = list(ENDPOINTS.values())
 
-        matches = find_network(session, url, args.name, endpoint_ids, endpoints)
+        matches = find_network(session, url, args.name, endpoint_ids)
 
         if not matches:
             print(f"Error: Network '{args.name}' not found.", file=sys.stderr)
             return 1
         if len(matches) > 1:
+            # Prefer exact match
             exact = [m for m in matches if m[2] == args.name]
             if len(exact) == 1:
                 matches = exact
@@ -467,11 +640,11 @@ def cmd_networks(args, session, url, endpoints):
         if not args.name:
             print("Error: Network name is required for create.", file=sys.stderr)
             return 1
-        if args.host == "all":
+        if not args.host:
             print("Error: --host is required for create.", file=sys.stderr)
             return 1
 
-        eid = endpoints[args.host]
+        eid = ENDPOINTS[args.host]
         body = {"Name": args.name, "Driver": args.driver or "bridge", "CheckDuplicate": True}
         if args.subnet or args.gateway:
             ipam_config = {}
@@ -495,15 +668,15 @@ def cmd_networks(args, session, url, endpoints):
         if not args.name:
             print("Error: Network name is required for remove.", file=sys.stderr)
             return 1
-        if args.host == "all":
+        if not args.host:
             print("Error: --host is required for remove (safety: no cross-host matching for destructive ops).", file=sys.stderr)
             return 1
         if args.name in DEFAULT_NETWORKS:
             print(f"Error: Cannot remove default network '{args.name}'.", file=sys.stderr)
             return 1
 
-        eid = endpoints[args.host]
-        matches = find_network(session, url, args.name, [eid], endpoints)
+        eid = ENDPOINTS[args.host]
+        matches = find_network(session, url, args.name, [eid])
 
         if not matches:
             print(f"Error: Network '{args.name}' not found on {args.host}.", file=sys.stderr)
@@ -535,37 +708,41 @@ def cmd_networks(args, session, url, endpoints):
 
 
 def main():
-    endpoints = get_endpoints()
-    host_choices = list(endpoints.keys())
-
-    parser = argparse.ArgumentParser(prog="portainer", description="Manage Docker containers via Portainer API")
+    parser = argparse.ArgumentParser(prog="portainer", description="Manage homelab containers via Portainer API")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_status = sub.add_parser("status", help="Show container status")
-    p_status.add_argument("host", nargs="?", default="all", choices=["all"] + host_choices)
+    p_status.add_argument("host", nargs="?", default="all", choices=["all", "docker01", "docker02", "soho-nas"])
     p_status.add_argument("--ports", action="store_true", help="Include port mappings in output")
 
     p_ports = sub.add_parser("ports", help="Show port allocations per host")
-    p_ports.add_argument("host", nargs="?", default="all", choices=["all"] + host_choices)
+    p_ports.add_argument("host", nargs="?", default="all", choices=["all", "docker01", "docker02", "soho-nas"])
 
     p_control = sub.add_parser("control", help="Start/stop/restart a container")
     p_control.add_argument("action", choices=["start", "stop", "restart"])
     p_control.add_argument("container")
-    p_control.add_argument("--host", choices=host_choices)
+    p_control.add_argument("--host", choices=["docker01", "docker02", "soho-nas"])
 
     p_logs = sub.add_parser("logs", help="View container logs")
     p_logs.add_argument("container")
-    p_logs.add_argument("--host", choices=host_choices)
+    p_logs.add_argument("--host", choices=["docker01", "docker02", "soho-nas"])
     p_logs.add_argument("--tail", type=int, default=100)
 
     p_deploy = sub.add_parser("deploy", help="Deploy/update a Portainer stack")
     p_deploy.add_argument("target", help="host/service (e.g. docker01/grafana)")
     p_deploy.add_argument("--stack-name", help="Override stack name (default: service name)")
 
+    p_volumes = sub.add_parser("volumes", help="Manage Docker volumes")
+    p_volumes.add_argument("action", choices=["list", "inspect", "create", "remove"])
+    p_volumes.add_argument("name", nargs="?", help="Volume name (required for inspect/create/remove)")
+    p_volumes.add_argument("--host", default="all", choices=["all", "docker01", "docker02", "soho-nas"])
+    p_volumes.add_argument("--driver", default="local", help="Volume driver (default: local)")
+    p_volumes.add_argument("--opt", action="append", help="Driver options as key=value (repeatable)")
+
     p_networks = sub.add_parser("networks", help="Manage Docker networks")
     p_networks.add_argument("action", choices=["list", "inspect", "create", "remove"])
     p_networks.add_argument("name", nargs="?", help="Network name (required for inspect/create/remove)")
-    p_networks.add_argument("--host", default="all", choices=["all"] + host_choices)
+    p_networks.add_argument("--host", default="all", choices=["all", "docker01", "docker02", "soho-nas"])
     p_networks.add_argument("--driver", default="bridge", help="Network driver (default: bridge)")
     p_networks.add_argument("--subnet", help="Subnet CIDR (e.g. 172.20.0.0/16)")
     p_networks.add_argument("--gateway", help="Gateway IP (e.g. 172.20.0.1)")
@@ -576,10 +753,10 @@ def main():
     session = requests.Session()
     session.headers["X-API-Key"] = token
 
-    handlers = {"status": cmd_status, "ports": cmd_ports, "control": cmd_control, "logs": cmd_logs, "deploy": cmd_deploy, "networks": cmd_networks}
+    handlers = {"status": cmd_status, "ports": cmd_ports, "control": cmd_control, "logs": cmd_logs, "deploy": cmd_deploy, "volumes": cmd_volumes, "networks": cmd_networks}
 
     try:
-        code = handlers[args.command](args, session, url, endpoints)
+        code = handlers[args.command](args, session, url)
     except requests.RequestException as e:
         print(f"Connection error: {e}", file=sys.stderr)
         code = 1
