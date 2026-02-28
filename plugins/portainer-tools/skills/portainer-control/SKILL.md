@@ -24,13 +24,14 @@ Control (start/stop/restart) a named container on a Docker host via the Portaine
 2. Run:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/portainer.py control <action> <container> [--host <host>]
+python3 $SKILL_DIR/portainer_control.py <action> <container> [--host <host>]
 ```
 
-   Example: `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/portainer.py control restart grafana --host docker01`
+   Example: `python3 $SKILL_DIR/portainer_control.py restart grafana --host docker01`
 
 3. Report the script output to the user.
 
 4. If the script reports multiple matches, ask the user to specify the host.
 
-5. If auth fails, tell the user to `export PORTAINER_TOKEN=ptr_...` before invoking. Generate one in Portainer: User Settings > Access Tokens.
+5. If auth fails, tell the user:
+   > Set `PORTAINER_TOKEN=ptr_...` before invoking. Generate one in Portainer: User Settings > Access Tokens.

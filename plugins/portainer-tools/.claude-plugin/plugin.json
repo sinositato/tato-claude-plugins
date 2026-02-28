@@ -6,5 +6,8 @@
     "name": "tato"
   },
   "license": "MIT",
-  "keywords": ["portainer", "docker", "homelab", "containers", "devops"]
+  "keywords": ["portainer", "docker", "homelab", "containers", "devops"],
+  "skills": {
+    "auto-discover": true
+  }
 }

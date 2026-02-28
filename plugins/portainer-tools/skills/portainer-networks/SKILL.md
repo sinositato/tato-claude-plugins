@@ -30,7 +30,7 @@ Manage Docker networks across hosts using the Portainer API.
 2. Build and run the command:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/portainer.py networks <action> [name] [--host HOST] [--driver DRIVER] [--subnet CIDR] [--gateway IP]
+python3 $SKILL_DIR/portainer_networks.py <action> [name] [--host HOST] [--driver DRIVER] [--subnet CIDR] [--gateway IP]
 ```
 
 3. Present the output:

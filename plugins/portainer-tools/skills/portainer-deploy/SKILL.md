@@ -1,7 +1,7 @@
 ---
 name: portainer-deploy
-description: Deploy or update a Docker Compose stack on a Portainer-managed host. Reads a compose file and pushes it as a Portainer stack. Use when asked to deploy, update, or push a stack.
-argument-hint: "<host>/<service> [--stack-name <name>]"
+description: Deploy or update a Docker Compose stack on a homelab host via Portainer. Reads a compose file and pushes it as a Portainer stack. Use when asked to deploy, update, or push a stack.
+argument-hint: "<host>/<service> [--file <path>] [--stack-name <name>]"
 user-invocable: true
 allowed-tools: [Bash, Read]
 ---
@@ -12,26 +12,28 @@ allowed-tools: [Bash, Read]
 $ARGUMENTS
 ```
 
-Deploy a stack to a Docker host by reading a compose file and pushing it to Portainer.
+Deploy a stack to a homelab host by reading a compose file and pushing it to Portainer.
 
 ## Steps
 
 1. Parse `$ARGUMENTS`:
    - Extract `<host>/<service>` (e.g. `docker01/grafana`)
+   - Extract optional `--file <path>` (compose file path; defaults to `docker/<host>/<service>/<service>.yml`)
    - Extract optional `--stack-name <name>` override
 
-2. Verify the compose file exists at `docker/<host>/<service>/<service>.yml` relative to the current working directory. If not, tell the user the expected path.
+2. Verify the compose file exists. If not, tell the user the file was not found.
 
 3. Run:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/portainer.py deploy <host>/<service> [--stack-name <name>]
+python3 $SKILL_DIR/portainer_deploy.py <host>/<service> [--file <path>] [--stack-name <name>]
 ```
 
-   Example: `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/portainer.py deploy docker01/grafana`
+   Examples:
+   - `python3 $SKILL_DIR/portainer_deploy.py docker01/grafana`
+   - `python3 $SKILL_DIR/portainer_deploy.py docker02/test-stack --file ./tmp/test-stack.yml`
 
-   Note: Set `COMPOSE_ROOT` env var if compose files are not in the current working directory.
+4. Report the result. Remind user to verify at http://portainer.app.soho.local
 
-4. Report the result.
-
-5. If auth fails, tell the user to `export PORTAINER_TOKEN=ptr_...` before invoking. Generate one in Portainer: User Settings > Access Tokens.
+5. If auth fails, tell the user:
+   > Set `PORTAINER_TOKEN=ptr_...` before invoking. Generate one in Portainer: User Settings > Access Tokens.

@@ -30,7 +30,7 @@ Manage Docker volumes across hosts using the Portainer API.
 2. Build and run the command:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/portainer.py volumes <action> [name] [--host HOST] [--driver DRIVER] [--opt key=value]
+python3 $SKILL_DIR/portainer_volumes.py <action> [name] [--host HOST] [--driver DRIVER] [--opt key=value]
 ```
 
 3. Present the output:

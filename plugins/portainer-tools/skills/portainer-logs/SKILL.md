@@ -24,13 +24,14 @@ Fetch and display logs for a named container on a Docker host via the Portainer 
 2. Run:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/portainer.py logs <container> [--host <host>] [--tail <n>]
+python3 $SKILL_DIR/portainer_logs.py <container> [--host <host>] [--tail <n>]
 ```
 
-   Example: `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/portainer.py logs n8n --host docker02 --tail 200`
+   Example: `python3 $SKILL_DIR/portainer_logs.py n8n --host docker02 --tail 200`
 
 3. Display the output in a code block.
 
 4. If the script reports multiple matches, ask the user to specify the host.
 
-5. If auth fails, tell the user to `export PORTAINER_TOKEN=ptr_...` before invoking. Generate one in Portainer: User Settings > Access Tokens.
+5. If auth fails, tell the user:
+   > Set `PORTAINER_TOKEN=ptr_...` before invoking. Generate one in Portainer: User Settings > Access Tokens.
