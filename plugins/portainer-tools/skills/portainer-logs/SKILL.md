@@ -33,4 +33,4 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/portainer.py logs <container> [--host <hos
 
 4. If the script reports multiple matches, ask the user to specify the host.
 
-5. If `PORTAINER_PASS` is not set, tell the user to `export PORTAINER_PASS=yourpassword` before invoking.
+5. If auth fails, tell the user to `export PORTAINER_TOKEN=ptr_...` before invoking. Generate one in Portainer: User Settings > Access Tokens.

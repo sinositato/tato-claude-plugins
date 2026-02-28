@@ -4,11 +4,10 @@
 Requires: requests (pip install requests)
 
 Environment variables:
-  PORTAINER_PASS  (required) — Portainer password
-  PORTAINER_URL   (optional) — default: http://192.168.10.12:9000
-  PORTAINER_USER  (optional) — default: tato
+  PORTAINER_TOKEN     (required) — API access token (generate in Portainer: User Settings > Access Tokens)
+  PORTAINER_URL       (optional) — default: http://192.168.10.12:9000
   PORTAINER_ENDPOINTS (optional) — JSON map of host:id, default: docker01=7,docker02=8,soho-nas=9
-  COMPOSE_ROOT    (optional) — root directory for compose files, default: current working directory
+  COMPOSE_ROOT        (optional) — root directory for compose files, default: current working directory
 """
 
 import argparse
@@ -20,7 +19,6 @@ from pathlib import Path
 import requests
 
 DEFAULT_URL = "http://192.168.10.12:9000"
-DEFAULT_USER = "tato"
 DEFAULT_ENDPOINTS = {"docker01": 7, "docker02": 8, "soho-nas": 9}
 
 
@@ -37,22 +35,13 @@ def get_endpoints():
 
 def get_env():
     url = os.environ.get("PORTAINER_URL", DEFAULT_URL)
-    user = os.environ.get("PORTAINER_USER", DEFAULT_USER)
-    password = os.environ.get("PORTAINER_PASS")
-    if not password:
-        print("Error: PORTAINER_PASS environment variable is required.", file=sys.stderr)
-        print("Run: export PORTAINER_PASS=yourpassword", file=sys.stderr)
-        sys.exit(1)
-    return url, user, password
-
-
-def authenticate(url, user, password):
-    resp = requests.post(f"{url}/api/auth", json={"username": user, "password": password})
-    resp.raise_for_status()
-    token = resp.json().get("jwt")
+    token = os.environ.get("PORTAINER_TOKEN")
     if not token:
-        print("Error: Authentication failed — no token in response.", file=sys.stderr)
+        print("Error: PORTAINER_TOKEN environment variable is required.", file=sys.stderr)
+        print("Generate one in Portainer: User Settings > Access Tokens", file=sys.stderr)
+        print("Run: export PORTAINER_TOKEN=ptr_...", file=sys.stderr)
         sys.exit(1)
+    return url, token
     return token
 
 
@@ -380,11 +369,10 @@ def main():
     p_deploy.add_argument("--stack-name", help="Override stack name (default: service name)")
 
     args = parser.parse_args()
-    url, user, password = get_env()
-    token = authenticate(url, user, password)
+    url, token = get_env()
 
     session = requests.Session()
-    session.headers["Authorization"] = f"Bearer {token}"
+    session.headers["X-API-Key"] = token
 
     handlers = {"status": cmd_status, "ports": cmd_ports, "control": cmd_control, "logs": cmd_logs, "deploy": cmd_deploy}
 

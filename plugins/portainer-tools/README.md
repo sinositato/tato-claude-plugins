@@ -16,14 +16,15 @@ Manage Docker containers across Portainer-managed hosts from Claude Code — che
 ### Required
 
 ```bash
-export PORTAINER_PASS=yourpassword
+export PORTAINER_TOKEN=ptr_your-access-token-here
 ```
+
+Generate a token in Portainer: **User Settings > Access Tokens**.
 
 ### Optional
 
 ```bash
 export PORTAINER_URL=http://192.168.10.12:9000   # default
-export PORTAINER_USER=tato                         # default
 export COMPOSE_ROOT=/path/to/repo                  # for deploy; default: cwd
 ```
 

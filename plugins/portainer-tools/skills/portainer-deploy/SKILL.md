@@ -34,4 +34,4 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/portainer.py deploy <host>/<service> [--st
 
 4. Report the result.
 
-5. If `PORTAINER_PASS` is not set, tell the user to `export PORTAINER_PASS=yourpassword` before invoking.
+5. If auth fails, tell the user to `export PORTAINER_TOKEN=ptr_...` before invoking. Generate one in Portainer: User Settings > Access Tokens.

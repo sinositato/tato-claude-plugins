@@ -28,5 +28,5 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/portainer.py status $ARGUMENTS
 
 3. Present the output as a formatted markdown table with columns: **Container**, **State**, **Status**. Group by host with a header for each.
 
-4. If `PORTAINER_PASS` is not set (script exits with error), tell the user:
-   > Set `PORTAINER_PASS=yourpassword` before invoking, or add it to your shell environment.
+4. If auth fails, tell the user:
+   > Set `PORTAINER_TOKEN=ptr_...` before invoking. Generate one in Portainer: User Settings > Access Tokens.
